@@ -22,7 +22,7 @@ class MissShmup():
 	def run(self):
 		while True:
 			if self.game.toggle == True:
-				#REINIT Game
+				# REINIT Game
 				self.game = GameAI()
 				self.startTime = pygame.time.get_ticks()
 				self.game.toggle = False
