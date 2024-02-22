@@ -18,42 +18,11 @@ class Agent():
         self.epsilon = 0 #control the randomness
         self.gamma=0.9 #discount rate
         self.memory = deque(maxlen = MAX_MEMORY) #popleft
-        self.model = Linear_Qnet(7 , 256 , 5)
+        self.model = Linear_Qnet(6 , 256 , 5)
         self.trainer = QTrainer(self.model, lr=LR , gamma= self.gamma )
-
-
-    def game_state(self, game):
-        player_y = game.player.rect.center[1]
-        player_nose = game.player.rect.right
-        state = []
-        up = 0
-        down = 0
-
-        for enemy in game.enemy_group:
-            if enemy.rect.y > player_y and enemy.rect.left > player_nose:
-                down += 1
-            elif enemy.rect.y < player_y and enemy.rect.left > player_nose:
-                up +=1
-        #state.append(up)
-        #state.append(down)
-        state.append(game.player.rect.centerx/RESOLUTION_X)
-        state.append(game.player.rect.centery/RESOLUTION_Y)
-        #state.append(int(game.auto_fire()))    
-
-        w = game.player.rect.width
-        h = game.player.rect.height
-
-        state.append(game.danger_level((0,0) , 1 , 1, w*1.1, h*1.1))
-        state.append(game.danger_level((50,0) , 1 , 1, w/2, h))
-        state.append(game.danger_level((-50,0) , 1 , 1, w/2, h))
-        state.append(game.danger_level((0,-50) , 1 , 1, w, h*1.5))
-        state.append(game.danger_level((0,50) , 1 , 1, w, h*1.5))
-
-        return np.array(state, dtype=int)
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done)) #popleft if maxmemory is reached
-
 
     def train_lomg_memory(self):
         if len(self.memory) > BATCH_SIZE:
@@ -92,16 +61,16 @@ def train():
     game = GameAI()
     while True:
         # get the old state
-        state_old = agent.game_state(game)
+        state_old = game.game_state()
 
         # get the move
         final_move = agent.get_action(state_old)
 
         # perform the move and get new state
-        reward, score, done = game.run(final_move) # final_move
-        if reward > 1:
+        reward, score, done = game.run(final_move, training=True) # final_move
+        if reward > 5:
             print(f'REWARD {reward} !!!!!') 
-        state_new = agent.game_state(game)
+        state_new = game.game_state()
 
         #train short memory
         agent.train_short_memory(state_old, final_move, reward, state_new, done)

@@ -1,14 +1,17 @@
 import pygame
 from game import GameAI
 from src.Config import *
+from src.Title import *
+from src.Menu import *
 
 ###################################################
-##		This is to test the manuel mode          ##
-##		To test the ai controled: run 'agent.py' ##
-##		It will be too fast for human :          ##
-##		SPEED is in game.py                      ##
+##		This is to play the game.                ##
+##		To train our robot-ai option:            ##
+##		run the agent.py file                    ##
 ###################################################
 
+# Try turning AUTOMATIC_PLAY to True to see the manualy program avoidance in action 
+AUTOMATIC_PLAY = False
 
 class MissShmup():
 	def __init__(self):
@@ -16,19 +19,46 @@ class MissShmup():
 		self.display_surface = pygame.display.set_mode((RESOLUTION_X,RESOLUTION_Y))
 		pygame.display.set_caption('Miss Shmup')
 		self.clock = pygame.time.Clock()
-		self.game = GameAI()
+		self.game = GameAI(auto_play = AUTOMATIC_PLAY)
+		self.title = Title()
+		self.menu = Menu()
 		self.startTime = 0
+		self.running_state = 'title'
+		self.game_over = False
 
 	def run(self):
 		while True:
-			if self.game.toggle == True:
-				# REINIT Game
-				self.game = GameAI()
-				self.startTime = pygame.time.get_ticks()
-				self.game.toggle = False
+			# Wanted_state of the game detection
 
-			# runing the game	
-			self.game.run(0)
+			# Switch from Title sreen to game
+			if self.title.toggle == True:
+				self.running_state = 'game'
+				self.game.reinit()
+				self.title.toggle = False
+
+			# Switch from game to menu or gameover
+			if self.game.toggle == True:
+				if self.game_over: 
+					self.running_state = 'title'
+				else:
+					self.running_state = 'menu'
+				self.game.toggle = False
+			
+			# Switch from menu to game.
+			if self.menu.toggle == True:
+				self.running_state = 'game'
+				if self.menu.toggle_init == True:
+					self.game.reinit()
+					self.menu.toggle_init = False
+				self.menu.toggle = False
+
+			# Run
+			if self.running_state == 'title':
+				self.title.run(self.game_over)
+			elif self.running_state == 'game':
+				self.game_over = self.game.run(0)[2]
+			elif self.running_state == 'menu':
+				self.menu.run()
 
 			pygame.display.update()
 

@@ -1,4 +1,8 @@
 import pygame
+import torch
+from model import Linear_Qnet
+import numpy as np
+
 from pygame.math import Vector2 as Vector
 import random
 from sys import exit
@@ -10,37 +14,21 @@ from src.Impact import Impact
 from src.Config import *
 
 #REWARDS
-# Die by collision 0 (to implement better later)
+# Die by collision -50
 # Kill enemy +10
 # Max the game +50
 # score 4/5 ==> +5
 # score < 4 ==> -10
 
-# ACTION
-# Move up
-# Move down
-# fire
-
-# STATES
-# has enemy in fire line > function autofire
-# how many targatable enemy up
-# how many targatable enemy down
-
-# STATES TO IMPLEMENT
-# is danger up
-# is danger down
-# target killed (score)
-# missed target
 
 SPEED = 100
-DURATION = 800000/SPEED
-# Duration was used to end the game. Now reinit arrives only by deah or if len(enemys)==0.
 ACTION_SPEED = 2
 
 
 class GameAI:
-	def __init__(self):
+	def __init__(self, auto_play = False):
 		pygame.init()
+		self.auto_play = auto_play
 		self.toggle = False
 		self.screen = pygame.display.set_mode((RESOLUTION_X,RESOLUTION_Y))
 		pygame.display.set_caption('Miss Shmup')
@@ -52,9 +40,29 @@ class GameAI:
 		self.startTime = 0
 		self.chrono = 0
 		self.reinit()
+		self.model = Linear_Qnet(6 , 256 , 5)
+		self.model.load(file_path='model/model.pth')
+		self.best_move = 'idle'
 
+	def reinit(self):
+		self.score = 0
+		self.startTime = pygame.time.get_ticks()		
+		self.player_single_grp = pygame.sprite.GroupSingle()
+		self.player = Player()
+		self.player_single_grp.add(self.player)
+		self.bullet_group = pygame.sprite.Group()
+		self.enemy_group = pygame.sprite.Group()
+		self.impact_group = pygame.sprite.Group()
+		for _ in range(5):
+			enemy_speed = 1 + random.random()
+			spawn_x = random.randint(600,760)
+			spawn_y = random.randint(50,350)
+			dir_x = random.uniform(.7,1.2)
+			dir_y = random.uniform(-.1,.1)
+			self.enemy_group.add(Enemy((spawn_x,spawn_y),(dir_x, dir_y), enemy_speed*ACTION_SPEED))
+		self.block_hit_list = []
 		
-	# returns the distance of a collision with an enemy. with ofset from player position and custom width and height.
+	# returns the distance of a collision with a given enemy. On a given square.
 	def line_collision(self, enemy, x_offset, y_offset, width, height, draw=True):
 
 		# For optimisation, border detection test runs first.
@@ -92,9 +100,9 @@ class GameAI:
 			return Vector(enemy_center - collision_points[0]).length()
 
 		else: return []
-		
+	
+	# danger level computation for a given square.
 	def danger_level(self, direction, samples, offset, width, height, draw=True):
-
 		# compute_border_danger
 		pos = Vector(self.player.rect.centerx + direction[0], self.player.rect.centery + direction[1])
 		closest_boundary = min([pos[0], pos[1], RESOLUTION_X-pos[0], RESOLUTION_Y-pos[1]])
@@ -115,28 +123,6 @@ class GameAI:
 					if dist < 0:
 						danger += 2
 		return danger
-
-
-
-
-	def reinit(self):
-		self.score = 0
-		self.startTime = pygame.time.get_ticks()		
-		self.player_single_grp = pygame.sprite.GroupSingle()
-		self.player = Player()
-		self.player_single_grp.add(self.player)
-		self.bullet_group = pygame.sprite.Group()
-		self.enemy_group = pygame.sprite.Group()
-		self.impact_group = pygame.sprite.Group()
-		for x in range(5):
-			enemy_speed = 1 + random.random()
-			spawn_x = random.randint(600,760)
-			spawn_y = random.randint(50,350)
-			dir_x = random.uniform(.7,1.2)
-			dir_y = random.uniform(-.1,.1)
-			self.enemy_group.add(Enemy((spawn_x,spawn_y),(dir_x, dir_y), enemy_speed*ACTION_SPEED))
-		self.block_hit_list = []
-
 
 	def new_spawn(self):
 			enemy_speed = 1 + random.random()
@@ -183,7 +169,41 @@ class GameAI:
 				can_hit = True
 		return True if can_hit else False
 	
+	# returns the states for the angent. (Also used in the game, when using robot-play)
+	def game_state(self):
+		player_y = self.player.rect.center[1]
+		player_nose = self.player.rect.right
+		state = []
+		up = 0
+		down = 0
+
+		for enemy in self.enemy_group:
+			if enemy.rect.y > player_y and enemy.rect.left > player_nose:
+				down += 1
+			elif enemy.rect.y < player_y and enemy.rect.left > player_nose:
+				up +=1
+
+		state.append(int(self.auto_fire()))
+
+		self.best_move = self.automatic_play(draw=False)  
+		state.append(1 if self.best_move == 'up' else 0)
+		state.append(1 if self.best_move == 'down' else 0)
+		state.append(1 if self.best_move == 'right' else 0)
+		state.append(1 if self.best_move == 'left' else 0)
+		state.append(1 if self.best_move == 'idle' else 0)
+		
+		return np.array(state, dtype=int)
+	
 	def player_input(self):
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+				exit()
+			if	event.type == pygame.KEYDOWN :
+				if event.key == pygame.K_SPACE :
+					self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
+				if event.key == pygame.K_ESCAPE or event.key == pygame.K_m :
+					self.toggle = True
 		keys = pygame.key.get_pressed()
 		if keys[pygame.K_UP] and self.player.rect.y > 0:
 			self.player.rect.y -= 4
@@ -193,8 +213,21 @@ class GameAI:
 			self.player.rect.x += 4
 		if keys[pygame.K_LEFT] and self.player.rect.x > 0:
 			self.player.rect.x -= 4
+		if keys[pygame.K_x]:
+			final_move = [0,0,0,0,0]
+			state0 = torch.tensor(self.game_state(), dtype = torch.float)
+			prediction = self.model(state0)
+			print(prediction)
+			move = torch.argmax(prediction).item()
+			print(move)
+			final_move[move]=1
+			self.ai_input(final_move)
 
 	def ai_input(self, action):
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+				exit()
 		if action == [1,0,0,0,0] and self.player.rect.y > 0:
 			self.player.rect.y -= 4*ACTION_SPEED
 		if action == [0,1,0,0,0] and self.player.rect.bottom < RESOLUTION_Y:
@@ -204,7 +237,7 @@ class GameAI:
 		if action == [0,0,0,1,0] and self.player.rect.x > 0:
 			self.player.rect.x -= 4*ACTION_SPEED
 		if action == [0,0,0,0,1]:
-			pass #self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
+			self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
 
 	def move_by_direction(self, direction):
 		# UP
@@ -222,7 +255,7 @@ class GameAI:
 		else:
 			pass #self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
 	
-	# return the main direction of a vector (best_move) and the next best direction (side_move)
+	# return the main direction of a vector between +X, -X, +Y and -Y (best_move). And the next best direction (side_move)
 	def vector_to_directions(self, vector):
 		if abs(vector[0])<abs(vector[1]):
 			best_move = 'up' if vector[1] <= 0 else 'down'
@@ -232,7 +265,7 @@ class GameAI:
 			sideway_move = 'up' if vector[1] <= 0 else 'down'
 		return best_move, sideway_move
 
-	# 'manual' artificial intelligence for enemy dodging, returns the best computed direction
+	# 'manual' artificial intelligence for enemy dodging, returns the best computed direction.
 	def automatic_play(self, draw=True):
 		w = self.player.rect.width
 		h = self.player.rect.height
@@ -297,23 +330,23 @@ class GameAI:
 			return best_move
 
 
-	def run(self, action): 
+	def run(self, action, training = False): 
 		self.screen.blit(self.sky_surface,(0,0))
 		reward = 0
 		done = False
-		self.ai_input(action)
-		self.player_input()
-		self.move_by_direction(self.automatic_play(draw=True))
-		for event in pygame.event.get():
-			if event.type == pygame.QUIT:
-				pygame.quit()
-				exit()
-			if	event.type == pygame.KEYDOWN :
-				if event.key == pygame.K_SPACE :
-					self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
+		# Should be optimised (Too many call of the automatic-play method) :
+		if training:
+			p_pos_before = Vector(self.player.rect.center)
+			self.ai_input(action)
+			p_pos_after = Vector(self.player.rect.center)
+
+		if not training:
+			self.player_input()
+			if self.auto_play == True:
+				self.move_by_direction(self.automatic_play(draw=True))
 
 
-		#Collision of our bullet with ennemies.
+		#Collision of player bullet with ennemies.
 		for bullet in self.bullet_group:
 			self.block_hit_list = pygame.sprite.spritecollide(bullet, self.enemy_group, True)
 			if self.block_hit_list:
@@ -321,6 +354,13 @@ class GameAI:
 				reward = 10
 				self.score += 1
 				self.impact_group.add(Impact(self.block_hit_list[0].rect.center))
+
+		if training:
+			# Rewards if follow the spoon feeded avoidance
+			has_moved = self.vector_to_directions( p_pos_after - p_pos_before )[0]
+			if has_moved == self.best_move:
+				reward += 5
+
 		
 		#Collision of ennemies with the player
 		for enemy in self.enemy_group:
@@ -334,20 +374,6 @@ class GameAI:
 		# Infinite respawn
 		if len(self.enemy_group)<4:
 			self.new_spawn()
-
-
-		#End game when player did not collide
-		if len(self.enemy_group)==0:
-			print("GAME OVER BY ALL ENEMIES OUT !")
-			self.toggle = True
-			if self.score == 5:
-				reward = 50
-			elif self.score == 4:
-				reward = 5
-			else:
-				reward = -10
-			done = True
-			return reward, self.score, done
 		
 			
 		self.enemy_group.draw(self.screen)
@@ -361,6 +387,7 @@ class GameAI:
 		self.impact_group.update()
 
 		self.clock.tick(SPEED)
+
 		# self.chrono is not used as now.
 		self.chrono = pygame.time.get_ticks()-self.startTime
 		pygame.display.update()
