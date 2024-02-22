@@ -22,11 +22,9 @@ class Linear_Qnet(nn.Module):
         file_name = os.path.join(model_folder_path, file_name)
         torch.save(self.state_dict(), file_name)
 
-    # To do :
     def load(self, file_path='model/model.pth'):
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Model file '{file_path}' not found.")
-        
         self.load_state_dict(torch.load(file_path))
 
 class QTrainer():
@@ -38,12 +36,12 @@ class QTrainer():
         self.criterion = nn.MSELoss()
     
     def train_step(self, state, action, reward, next_state, done):
-        # To test : Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor.
+        # To concider : Creating a tensor from a list of numpy.ndarrays is extremely slow. 
+        # Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor.
         state = torch.tensor(state, dtype=torch.float)
         next_state = torch.tensor(next_state, dtype=torch.float)
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
-        # (n, x)
         
         if len(state.shape) == 1:
             # (1, x)

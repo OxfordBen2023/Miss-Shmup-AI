@@ -217,9 +217,7 @@ class GameAI:
 			final_move = [0,0,0,0,0]
 			state0 = torch.tensor(self.game_state(), dtype = torch.float)
 			prediction = self.model(state0)
-			print(prediction)
 			move = torch.argmax(prediction).item()
-			print(move)
 			final_move[move]=1
 			self.ai_input(final_move)
 

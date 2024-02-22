@@ -11,5 +11,5 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__+ '/../'))
 NO_MENU_SCREEN = True
 FONT_PATH = ROOT_DIR + '/assets/font/Pixeltype.ttf'
 
-def clamp01(value):
-    return max(min(value, 1), 0)
+#def clamp01(value):
+#    return max(min(value, 1), 0)

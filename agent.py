@@ -82,6 +82,8 @@ def train():
             # train the long memory, plot the result
             agent.n_games += 1
             agent.train_lomg_memory()
+            #file_name=f'model{agent.n_games}.pth'
+            #agent.model.save(file_name)
 
             if score > best_score:
                 best_score = score
