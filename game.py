@@ -43,6 +43,9 @@ class GameAI:
 		self.model = Linear_Qnet(6 , 256 , 5)
 		self.model.load(file_path='model/model.pth')
 		self.best_move = 'idle'
+		self.FONT_DEFAULT = pygame.font.Font(FONT_PATH, 40)
+		self.x_pressed = False
+
 
 	def reinit(self):
 		self.score = 0
@@ -61,6 +64,11 @@ class GameAI:
 			dir_y = random.uniform(-.1,.1)
 			self.enemy_group.add(Enemy((spawn_x,spawn_y),(dir_x, dir_y), enemy_speed*ACTION_SPEED))
 		self.block_hit_list = []
+
+	# CBB : Could use the size and a less generic font object. 
+	def write(self, screen, text, text_color, x, y):
+		img = self.FONT_DEFAULT.render(text, True, text_color)
+		screen.blit(img, (x,y))
 		
 	# returns the distance of a collision with a given enemy. On a given square.
 	def line_collision(self, enemy, x_offset, y_offset, width, height, draw=True):
@@ -195,6 +203,7 @@ class GameAI:
 		return np.array(state, dtype=int)
 	
 	def player_input(self):
+		self.x_pressed = False
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				pygame.quit()
@@ -220,6 +229,12 @@ class GameAI:
 			move = torch.argmax(prediction).item()
 			final_move[move]=1
 			self.ai_input(final_move)
+			self.x_pressed = True
+			
+
+			# Fire automaticly (It's a bit cheating... To improve later)
+			if self.auto_fire():
+				self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
 
 	def ai_input(self, action):
 		for event in pygame.event.get():
@@ -304,14 +319,14 @@ class GameAI:
 		escape_vector = Vector( gradient_direction_x*50, gradient_direction_y*50)
 
 		if draw:
-			pygame.draw.line(self.screen, 'yellow', p_center, p_center+escape_vector , 8)
+			pygame.draw.line(self.screen, 'yellow', p_center, p_center+escape_vector , 2)
 
 		# If danger is low, go back to the safest space on the screen.
 		if escape_vector.length() < 7:
 			safe_space = Vector(200, 200)
 			to_safe_space = Vector(safe_space[0]-self.player.rect.centerx, safe_space[1]-self.player.rect.centery)
 			if draw:
-				pygame.draw.line(self.screen, 'green', safe_space, (self.player.rect.centerx, self.player.rect.centery), 2 )
+				pygame.draw.line(self.screen, 'blue', safe_space, (self.player.rect.centerx, self.player.rect.centery), 2 )
 
 			best_move, _ = self.vector_to_directions(to_safe_space)
 
@@ -370,7 +385,7 @@ class GameAI:
 				done = True
 				return reward, self.score, done
 		# Infinite respawn
-		if len(self.enemy_group)<4:
+		if len(self.enemy_group)<6:
 			self.new_spawn()
 		
 			
@@ -378,6 +393,11 @@ class GameAI:
 		self.bullet_group.draw(self.screen)
 		self.impact_group.draw(self.screen)
 		self.player_single_grp.draw(self.screen)
+		self.write(self.screen, f'score : {self.score}', 'grey',  30, 25)
+		if self.x_pressed == True:
+			self.write(self.screen, 'Autopilot ON', 'grey', 550, 25)
+		else:
+			self.write(self.screen, 'Press X ', 'grey', 550, 25)
 
 		self.player.update()
 		self.enemy_group.update()

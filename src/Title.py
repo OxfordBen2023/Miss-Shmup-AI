@@ -17,7 +17,7 @@ class Title():
 		self.game_message_rect = self.game_message.get_rect(center = (RESOLUTION_X/2,330))
 
 
-	def run(self, gameover):
+	def run(self, gameover, score):
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				pygame.quit()
@@ -27,8 +27,11 @@ class Title():
 					self.toggle = True
 		self.display_surface.fill('grey')
 		self.display_surface.blit(self.img, self.img_rect )
-		self.display_surface.blit(self.game_name, self.game_name_rect)
 		if gameover:
+			self.game_name = self.FONT_DEFAULT.render(f'Score : {score}',False,'white')
+			self.game_name_rect = self.game_name.get_rect(center = (RESOLUTION_X/2,50))
+			self.display_surface.blit(self.game_name, self.game_name_rect)
 			self.display_surface.blit(self.game_over_message, self.game_message_rect)
 		else:
+			self.display_surface.blit(self.game_name, self.game_name_rect)
 			self.display_surface.blit(self.game_message, self.game_message_rect)

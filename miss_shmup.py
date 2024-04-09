@@ -54,7 +54,7 @@ class MissShmup():
 
 			# Run
 			if self.running_state == 'title':
-				self.title.run(self.game_over)
+				self.title.run(self.game_over, self.game.score)
 			elif self.running_state == 'game':
 				self.game_over = self.game.run(0)[2]
 			elif self.running_state == 'menu':
