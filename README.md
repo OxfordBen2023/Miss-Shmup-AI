@@ -21,7 +21,7 @@ It improves after approximately 100 games:
 ![Trained](assets/readme_medias/miss_shmup_trained.gif)
 ![ScoreCurve](assets/readme_medias/learning_curve.png)
 
-Watching the neural network learn is a rewarding experience. It's reminiscent of working with special effects simulations. Initially, you set up (hyper-)parameters and observe them evolve, hoping for the desired outcome. Although this particular result may be prone to overfitting and achievable through conventional coding, the machine learning approach adds a unique satisfying dimension.
+Watching the neural network learn is a rewarding experience. It's reminiscent of working with special effects simulations. Initially, you set up (hyper-)parameters and observe the result evolve, hoping for the desired outcome. Although this particular result may be prone to overfitting and achievable through conventional coding, the machine learning approach adds a unique satisfying dimension.
 
 ## Avoiding Collisions
 

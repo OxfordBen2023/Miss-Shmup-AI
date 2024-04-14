@@ -1,26 +1,19 @@
 import pygame
 import torch
-from model import Linear_Qnet
+from src.model import Linear_Qnet
 import numpy as np
 
 from pygame.math import Vector2 as Vector
 import random
 from sys import exit
 
-from src.Player import Player
-from src.Enemy import *
-from src.Bullet import Bullet
-from src.Impact import Impact
-from src.Config import *
+from src.player import Player
+from src.enemy import *
+from src.bullet import Bullet
+from src.impact import Impact
+from src.config import *
 
-#REWARDS
-# Die by collision -50
-# Kill enemy +10
-# Max the game +50
-# score 4/5 ==> +5
-# score < 4 ==> -10
-
-
+# SPEED is global (clock_speed), ACTION_SPEED afects the player and enemy speed
 SPEED = 100
 ACTION_SPEED = 2
 
@@ -38,7 +31,6 @@ class GameAI:
 		self.count = 0
 		self.clock = pygame.time.Clock()
 		self.startTime = 0
-		self.chrono = 0
 		self.reinit()
 		self.model = Linear_Qnet(6 , 256 , 5)
 		self.model.load(file_path='model/model.pth')
@@ -70,7 +62,7 @@ class GameAI:
 		img = self.FONT_DEFAULT.render(text, True, text_color)
 		screen.blit(img, (x,y))
 		
-	# returns the distance of a collision with a given enemy. On a given square.
+	# returns the distance of a collision with a given enemy. On a given rectangle.
 	def line_collision(self, enemy, x_offset, y_offset, width, height, draw=True):
 
 		# For optimisation, border detection test runs first.
@@ -155,15 +147,6 @@ class GameAI:
 			dir_y = direction[1]
 			self.enemy_group.add(Enemy((spawn_x,spawn_y),(dir_x, dir_y), enemy_speed*ACTION_SPEED))
 
-	def is_bullet(self):
-		ship_hight = self.player.rect.center[1]
-		is_bullet_right = False
-		for bullet in self.bullet_group:
-			top_enemy = bullet.rect.y
-			down_enemy = bullet.rect.bottom
-			if ship_hight > top_enemy and ship_hight < down_enemy:
-				is_bullet_right = True
-		return True if is_bullet_right else False
 
 	def auto_fire(self):
 		ship_hight = self.player.rect.center[1]
@@ -177,7 +160,7 @@ class GameAI:
 				can_hit = True
 		return True if can_hit else False
 	
-	# returns the states for the angent. (Also used in the game, when using robot-play)
+	# returns the states for the angent. (Also used in the game, when using autopilot-play)
 	def game_state(self):
 		player_y = self.player.rect.center[1]
 		player_nose = self.player.rect.right
@@ -231,7 +214,6 @@ class GameAI:
 			self.ai_input(final_move)
 			self.x_pressed = True
 			
-
 			# Fire automaticly (It's a bit cheating... To improve later)
 			if self.auto_fire():
 				self.bullet_group.add(Bullet(self.player_single_grp.sprite.rect.center))
@@ -387,17 +369,18 @@ class GameAI:
 		# Infinite respawn
 		if len(self.enemy_group)<6:
 			self.new_spawn()
-		
-			
+					
 		self.enemy_group.draw(self.screen)
 		self.bullet_group.draw(self.screen)
 		self.impact_group.draw(self.screen)
 		self.player_single_grp.draw(self.screen)
 		self.write(self.screen, f'score : {self.score}', 'grey',  30, 25)
-		if self.x_pressed == True:
-			self.write(self.screen, 'Autopilot ON', 'grey', 550, 25)
-		else:
-			self.write(self.screen, 'Press X ', 'grey', 550, 25)
+
+		if not training:
+			if self.x_pressed == True:
+				self.write(self.screen, 'Autopilot ON', 'grey', 550, 25)
+			else:
+				self.write(self.screen, 'Press X ', 'grey', 550, 25)
 
 		self.player.update()
 		self.enemy_group.update()
@@ -406,8 +389,7 @@ class GameAI:
 
 		self.clock.tick(SPEED)
 
-		# self.chrono is not used as now.
-		self.chrono = pygame.time.get_ticks()-self.startTime
 		pygame.display.update()
 
 		return reward, self.score, done
+	

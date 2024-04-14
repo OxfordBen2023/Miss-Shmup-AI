@@ -1,5 +1,5 @@
 import pygame
-from src.Config import *
+from src.config import *
 
 class Title():
 	def __init__(self):

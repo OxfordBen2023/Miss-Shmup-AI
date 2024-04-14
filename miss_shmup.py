@@ -1,12 +1,12 @@
 import pygame
-from game import GameAI
-from src.Config import *
-from src.Title import *
-from src.Menu import *
+from src.config import *
+from src.game import *
+from src.title import *
+from src.menu import *
 
 ###################################################
-##		This is to play the game.                ##
-##		To train our robot-ai option:            ##
+##		Run this is to play the game.            ##
+##		To train the model                       ##
 ##		run the agent.py file                    ##
 ###################################################
 
@@ -22,13 +22,11 @@ class MissShmup():
 		self.game = GameAI(auto_play = AUTOMATIC_PLAY)
 		self.title = Title()
 		self.menu = Menu()
-		self.startTime = 0
 		self.running_state = 'title'
 		self.game_over = False
 
 	def run(self):
 		while True:
-			# Wanted_state of the game detection
 
 			# Switch from Title sreen to game
 			if self.title.toggle == True:

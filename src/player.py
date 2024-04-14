@@ -1,5 +1,5 @@
 import pygame
-from src.Config import *
+from src.config import *
 
 class Player(pygame.sprite.Sprite):
 	def __init__(self):
@@ -26,11 +26,4 @@ class Player(pygame.sprite.Sprite):
 	def update(self):
 		self.animation_state()
 
-#class PlayerZone(pygame.sprite.Sprite):
-#	def __init__(self,emit, size, name):
-#		super().__init__()
-#		self.name = name
-#		self.image = pygame.Surface(size)
-#		self.image.fill((230,0,0))
-#		self.rect = self.image.get_rect(center = (emit))
 

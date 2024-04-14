@@ -1,12 +1,17 @@
 import torch
 import random
-import numpy as np
 from collections import deque
-from game import *
-from model import Linear_Qnet, QTrainer
-from helper import plot
+from src.game import *
+from src.model import Linear_Qnet, QTrainer
+from src.helper import plot
 
-# To do : try spoon feeding the manual doging infos to the agent.
+
+###################################################
+##		This is to train the agent               ##
+##		To play the game, (better first)         ##
+##		run the miss_shmup.py file               ##
+###################################################
+
 
 MAX_MEMORY = 100_000
 BATCH_SIZE = 1000
@@ -82,12 +87,11 @@ def train():
             # train the long memory, plot the result
             agent.n_games += 1
             agent.train_lomg_memory()
-            #file_name=f'model{agent.n_games}.pth'
-            #agent.model.save(file_name)
+            file_name= 'model_testing_training.pth'
 
             if score > best_score:
                 best_score = score
-                agent.model.save()
+                agent.model.save(file_name)
             print('Games : ', agent.n_games, 'Score', score, 'Record:', best_score)
             plot_scores.append(score)
             total_score += score

@@ -1,4 +1,4 @@
-from ..Config import *
+from ..config import *
 import pygame
 
 class TextUtil():

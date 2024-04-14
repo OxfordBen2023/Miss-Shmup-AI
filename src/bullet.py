@@ -1,4 +1,4 @@
-from src.Config import *
+from src.config import *
 import pygame
 
 class Bullet(pygame.sprite.Sprite):

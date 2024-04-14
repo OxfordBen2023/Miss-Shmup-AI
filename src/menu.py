@@ -1,4 +1,4 @@
-from src.Config import *
+from src.config import *
 from src.Utils.TextUtil import TextUtil
 from sys import exit
 
